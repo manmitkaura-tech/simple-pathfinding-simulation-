@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Pathfinding Simulator</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#071426;--panel:#0d2038;--line:#203d5d;--text:#eff6ff;--muted:#9db2ce;--cyan:#19dfd0;--green:#18d6a0;--pink:#ff527b;--yellow:#ffdc59;--wall:#687b95;--visited:#187bd2;--cell:#102945}
+body{margin:0;padding:20px;background:var(--bg);color:var(--text);font-family:Arial,sans-serif;transition:.2s}
+body.light{--bg:#edf3fb;--panel:#fff;--line:#cbd9e9;--text:#192b45;--muted:#61748c;--cell:#e7eff9}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+h1{font-size:clamp(23px,4vw,36px);margin:0}h1 span{color:var(--cyan)}
+.subtitle{color:var(--muted);font-size:13px;margin-top:7px}
+button,select{padding:11px 13px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);cursor:pointer}
+button:hover{filter:brightness(1.2)}
+.dashboard{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;max-width:1400px;margin:auto}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:16px}
+.toolbar label{font-size:12px;color:var(--muted)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:15px 0}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+.grid{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:3px}
+.cell{aspect-ratio:1;min-width:0;padding:0;border-radius:2px;background:var(--cell);border:1px solid var(--line)}
+.cell.start{background:var(--green)}.cell.end{background:var(--pink)}.cell.wall{background:var(--wall)}
+.cell.visited{background:var(--visited);animation:pop .12s}.cell.path{background:var(--yellow);box-shadow:0 0 7px #ffdc5960}
+@keyframes pop{from{transform:scale(.6)}to{transform:scale(1)}}
+.controls{display:grid;gap:12px}.controls select{width:100%}
+.primary{background:#078eaf;color:white;border:0}.danger{background:#c52e52;color:white}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.buttons button:first-child{grid-column:1/-1}
+label{font-size:12px;color:var(--muted)}input[type=range]{width:100%;accent-color:var(--cyan)}
+.stats{margin-top:15px}.stats h3,.panel h3{font-size:15px;margin:0 0 12px}
+.stat{display:flex;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.stat strong{color:var(--text)}#message{font-size:12px;color:var(--cyan);line-height:1.5}
+.extras{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1400px;margin:16px auto}
+.info{color:var(--muted);font-size:13px;line-height:1.7}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 0 5px}
+@media(max-width:850px){.dashboard{grid-template-columns:1fr}.extras{grid-template-columns:1fr}body{padding:12px}.grid{gap:2px}}
+</style>
+</head>
+<body>
+<header><div><h1>Smart <span>Pathfinding</span> Simulator</h1><div class="subtitle">DATA STRUCTURES MINI PROJECT</div></div><button id="themeBtn">☀ / ☾ Theme</button></header>
+<div class="dashboard">
+<main class="panel">
+<div class="toolbar"><div><label for="gridSize">GRID SIZE</label><br><select id="gridSize"><option value="15">15 × 15</option><option value="20" selected>20 × 20</option><option value="25">25 × 25</option></select></div><button id="randomBtn">✦ Random Walls</button></div>
+<div class="legend"><span><i class="dot" style="background:var(--green)"></i>Start</span><span><i class="dot" style="background:var(--pink)"></i>Destination</span><span><i class="dot" style="background:var(--wall)"></i>Wall</span><span><i class="dot" style="background:var(--visited)"></i>Visited</span><span><i class="dot" style="background:var(--yellow)"></i>Path</span></div>
+<div id="grid" class="grid"></div><p class="info">Click or drag on the grid to draw walls.</p>
+</main>
+<aside>
+<section class="panel controls"><h3>⚙ Algorithm Settings</h3><label for="algorithm">Select Algorithm</label>
+<select id="algorithm"><option value="astar">A* Search</option><option value="bfs">Breadth-First Search (BFS)</option><option value="dijkstra">Dijkstra's Algorithm</option><option value="dfs">Depth-First Search (DFS)</option></select>
+<label for="speed">Animation Speed: <span id="speedLabel">Medium</span></label><input id="speed" type="range" min="1" max="100" value="60">
+<div class="buttons"><button id="startBtn" class="primary">▶ Start Visualization</button><button id="resetBtn">↻ Reset</button><button id="clearBtn" class="danger">Clear Walls</button></div><div id="message">Ready to find a path!</div></section>
+<section class="panel stats"><h3>📊 Live Statistics</h3><div class="stat"><span>Explored Nodes</span><strong id="explored">0</strong></div><div class="stat"><span>Path Length</span><strong id="length">—</strong></div><div class="stat"><span>Total Walls</span><strong id="walls">0</strong></div><div class="stat"><span>Execution Time</span><strong id="time">—</strong></div><div class="stat"><span>Algorithm</span><strong id="algoName">A*</strong></div></section>
+</aside></div>
+<div class="extras"><section class="panel"><h3>How It Works</h3><p class="info">1. Select an algorithm.<br>2. Create walls in the grid.<br>3. Click Start Visualization.<br>4. Watch the algorithm explore cells.<br>5. The yellow cells display the found path.</p></section>
+<section class="panel"><h3>Algorithm Information</h3><p class="info" id="algorithmInfo">A* uses the travelled cost and an estimate of the distance to the destination to guide its search.</p><p class="info" id="formula">f(n) = g(n) + h(n)</p></section></div>
+<footer>SMART PATHFINDING SIMULATOR | HTML · CSS · JAVASCRIPT</footer>
+<script>
+const $ = id => document.getElementById(id), grid = $("grid");
+let N=20,start={r:5,c:2},end={r:14,c:17},walls=new Set(),busy=false,painting=false,paintValue=true;
+const key=(r,c)=>`${r},${c}`,same=(a,b)=>a.r===b.r&&a.c===b.c,inside=(r,c)=>r>=0&&r<N&&c>=0&&c<N,directions=[[-1,0],[1,0],[0,-1],[0,1]];
+function getCell(r,c){return grid.children[r*N+c]}
+function buildGrid(){grid.innerHTML="";grid.style.gridTemplateColumns=`repeat(${N},minmax(0,1fr))`;for(let r=0;r<N;r++)for(let c=0;c<N;c++){const cell=document.createElement("button");cell.className="cell";cell.type="button";cell.setAttribute("aria-label",`Row ${r+1}, Column ${c+1}`);cell.addEventListener("pointerdown",event=>{if(busy)return;event.preventDefault();painting=true;paintValue=!walls.has(key(r,c));toggleWall(r,c,paintValue)});cell.addEventListener("pointerenter",()=>{if(painting&&!busy)toggleWall(r,c,paintValue)});grid.appendChild(cell)}drawGrid()}
+document.addEventListener("pointerup",()=>painting=false);
+function drawGrid(){for(let r=0;r<N;r++)for(let c=0;c<N;c++){const el=getCell(r,c);el.className="cell";if(walls.has(key(r,c)))el.classList.add("wall");if(same(start,{r,c}))el.className="cell start";if(same(end,{r,c}))el.className="cell end"}$("walls").textContent=walls.size}
+function clearResults(){grid.querySelectorAll(".visited,.path").forEach(el=>el.classList.remove("visited","path"));$("explored").textContent="0";$("length").textContent="—";$("time").textContent="—"}
+function toggleWall(r,c,value){if(same(start,{r,c})||same(end,{r,c}))return;const k=key(r,c);if(value)walls.add(k);else walls.delete(k);clearResults();drawGrid()}
+function heuristic(a,b){return Math.abs(a.r-b.r)+Math.abs(a.c-b.c)}
+function neighbors(p){return directions.map(([dr,dc])=>({r:p.r+dr,c:p.c+dc})).filter(p=>inside(p.r,p.c)&&!walls.has(key(p.r,p.c)))}
+function search(mode){const queue=[{...start,g:0,f:heuristic(start,end),depth:0}],previous=new Map(),distance=new Map([[key(start.r,start.c),0]]),visited=new Set(),order=[];if(mode==="bfs"||mode==="dfs")queue[0]={...start};
+while(queue.length){let current;if(mode==="bfs")current=queue.shift();else if(mode==="dfs")current=queue.pop();else{queue.sort((a,b)=>mode==="dijkstra"?a.g-b.g:a.f-b.f);current=queue.shift()}const ck=key(current.r,current.c);if(visited.has(ck))continue;visited.add(ck);order.push(current);if(same(current,end))return{order,previous,found:true};let next=neighbors(current);if(mode==="dfs")next=next.reverse();for(const p of next){const pk=key(p.r,p.c);if(mode==="bfs"||mode==="dfs"){if(visited.has(pk)||previous.has(pk)||same(p,start))continue;previous.set(pk,current);queue.push(p)}else{if(visited.has(pk))continue;const newDistance=(distance.get(ck)??Infinity)+1;if(newDistance<(distance.get(pk)??Infinity)){distance.set(pk,newDistance);previous.set(pk,current);const h=mode==="astar"?heuristic(p,end):0;queue.push({...p,g:newDistance,f:newDistance+h})}}}}
+return{order,previous,found:false}}
+function reconstructPath(result){const path=[];let current=end;while(!same(current,start)){path.push(current);current=result.previous.get(key(current.r,current.c));if(!current)return[]}return path.reverse()}
+function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function speedDelay(){return Math.max(2,105-Number($("speed").value))}
+async function runSearch(){if(busy)return;busy=true;["startBtn","resetBtn","clearBtn","randomBtn","gridSize","algorithm"].forEach(id=>$(id).disabled=true);clearResults();$("message").textContent="Searching for a route…";const mode=$("algorithm").value,names={astar:"A*",bfs:"BFS",dijkstra:"Dijkstra",dfs:"DFS"};$("algoName").textContent=names[mode];const startTime=performance.now(),result=search(mode);
+for(let i=0;i<result.order.length;i++){const p=result.order[i];if(!same(p,start)&&!same(p,end))getCell(p.r,p.c).classList.add("visited");$("explored").textContent=i+1;if(i%2===0)await wait(speedDelay())}
+if(result.found){const path=reconstructPath(result);for(const p of path){if(!same(p,end))getCell(p.r,p.c).classList.add("path");await wait(Math.max(2,speedDelay()/2))}$("length").textContent=path.length;$("message").textContent="✓ Path found successfully!"}else{$("length").textContent="None";$("message").textContent="No path found. Try clearing some walls."}
+$("time").textContent=((performance.now()-startTime)/1000).toFixed(2)+" s";busy=false;["startBtn","resetBtn","clearBtn","randomBtn","gridSize","algorithm"].forEach(id=>$(id).disabled=false)}
+$("startBtn").addEventListener("click",runSearch);
+$("resetBtn").addEventListener("click",()=>{if(busy)return;walls.clear();clearResults();drawGrid();$("message").textContent="Grid reset successfully."});
+$("clearBtn").addEventListener("click",()=>{if(busy)return;walls.clear();clearResults();drawGrid();$("message").textContent="All walls cleared."});
+$("randomBtn").addEventListener("click",()=>{if(busy)return;walls.clear();for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(Math.random()<0.2&&!same(start,{r,c})&&!same(end,{r,c}))walls.add(key(r,c));clearResults();drawGrid();$("message").textContent="Random walls generated."});
+$("gridSize").addEventListener("change",()=>{if(busy)return;N=Number($("gridSize").value);start={r:Math.floor(N/2),c:1};end={r:Math.floor(N/2),c:N-2};walls.clear();clearResults();buildGrid()});
+$("speed").addEventListener("input",()=>{const value=Number($("speed").value);$("speedLabel").textContent=value<30?"Slow":value>70?"Fast":"Medium"});
+$("themeBtn").addEventListener("click",()=>document.body.classList.toggle("light"));
+$("algorithm").addEventListener("change",()=>{const info={astar:["A* combines travelled cost with estimated distance to the destination.","f(n) = g(n) + h(n)"],bfs:["BFS explores cells level by level and finds a shortest path when all moves have equal cost.","FIFO Queue"],dijkstra:["Dijkstra expands the node with the lowest known distance first.","dist(v) = dist(u) + 1"],dfs:["DFS explores deeply before backtracking. It does not guarantee the shortest path.","LIFO Stack"]};const selected=info[$("algorithm").value];$("algorithmInfo").textContent=selected[0];$("formula").textContent=selected[1]});
+buildGrid();
+</script>
+</body></html>
